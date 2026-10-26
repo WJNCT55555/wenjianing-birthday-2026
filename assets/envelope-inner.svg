@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-label="黑底红色日轮的生日邀请卡">
+  <defs>
+    <pattern id="print" width="7" height="7" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r=".55" fill="#eee8dd" opacity=".09"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="760" fill="#101011"/>
+  <rect width="1200" height="760" fill="url(#print)"/>
+  <circle cx="955" cy="362" r="224" fill="#a7202b"/>
+  <circle cx="955" cy="362" r="125" fill="#101011"/>
+  <path d="M711 410 1189 169 1211 217 733 458Z" fill="#101011"/>
+  <rect x="54" y="46" width="1092" height="668" fill="none" stroke="#76716b" stroke-width="2"/>
+  <path d="M104 143H1096M104 614H1096" stroke="#726a62" stroke-width="2"/>
+  <text x="105" y="112" font-family="Arial,Helvetica,sans-serif" font-size="21" font-weight="700" letter-spacing="5" fill="#d0c8bc">ПРИГЛАШЕНИЕ</text>
+  <text x="1095" y="112" text-anchor="end" font-family="Microsoft YaHei,PingFang SC,Arial,sans-serif" font-size="22" font-weight="700" letter-spacing="4" fill="#d0c8bc">私人邀请</text>
+  <text x="114" y="360" font-family="Microsoft YaHei,PingFang SC,Arial,sans-serif" font-size="112" font-weight="900" letter-spacing="-8" fill="#eee9df">下一幕，</text>
+  <text x="114" y="484" font-family="Microsoft YaHei,PingFang SC,Arial,sans-serif" font-size="112" font-weight="900" letter-spacing="-8" fill="#eee9df">见你。</text>
+  <path d="M107 572H250L237 581H107Z" fill="#ad2932"/>
+  <text x="1094" y="666" text-anchor="end" font-family="Arial,Helvetica,sans-serif" font-size="25" font-weight="800" letter-spacing="2" fill="#eee8dd">2026.11.05</text>
+</svg>
