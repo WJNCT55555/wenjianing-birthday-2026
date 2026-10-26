@@ -8,7 +8,6 @@
   const EDGE_MOUSE = 57;
   const STEP = 6;
   const MAX_SAMPLES = 480;
-  const MAX_TEARS = 8;
   const stages = {
     entry: document.getElementById('entry'),
     envelope: document.getElementById('envelope-scene'),
@@ -45,6 +44,7 @@
   };
   const paper = makeLayer();
   const cutPaper = makeLayer();
+  const fiberEdges = makeLayer();
   canvas.width = Math.round(W * scale);
   canvas.height = Math.round(H * scale);
   const ctx = canvas.getContext('2d', { alpha: true });
@@ -254,7 +254,7 @@
     const nextScale = backingScale(cssWidth);
     if (Math.abs(nextScale - scale) < .025) return;
     scale = nextScale;
-    for (const layer of [paper, cutPaper]) {
+    for (const layer of [paper, cutPaper, fiberEdges]) {
       layer.element.width = Math.round(W * scale);
       layer.element.height = Math.round(H * scale);
       layer.context.setTransform(scale, 0, 0, scale, 0, 0);
@@ -299,10 +299,14 @@
     return { x: clamp(point.x, PAPER.left, PAPER.right), y: clamp(point.y, PAPER.top, PAPER.bottom) };
   }
 
-  function createTear(side, point) {
-    if (tears.length >= MAX_TEARS) tears.shift();
+  function createTear(side, point, pointerType) {
     const origin = edgeOrigin(point, side);
-    const tear = { side, samples: [{ x: origin.x, y: origin.y, s: 0 }], seed: tears.length * 7.47 + 1.9 };
+    const tear = {
+      side,
+      samples: [{ x: origin.x, y: origin.y, s: 0 }],
+      seed: tears.length * 7.47 + 1.9,
+      width: pointerType === 'mouse' ? 1.28 : 1
+    };
     tears.push(tear);
     addPoint(tear, clampedPoint(point));
     return tear;
@@ -341,35 +345,33 @@
 
   function geometry(tear) {
     const samples = tear.samples;
-    const total = samples[samples.length - 1].s;
-    if (samples.length < 3 || total < 15) return null;
+    if (samples.length < 3 || samples[samples.length - 1].s < 15) return null;
     // The entrance stays connected to the edge; the live end is blunt and fibrous.
     const left = [];
     const right = [];
     const points = [];
     for (let index = 0; index < samples.length; index += 1) {
       const sample = samples[index];
-      const before = samples[Math.max(0, index - 2)];
-      const after = samples[Math.min(samples.length - 1, index + 2)];
+      const before = samples[Math.max(0, index - 1)];
+      const after = samples[index === 0 ? Math.min(1, samples.length - 1) : index];
       const dx = after.x - before.x;
       const dy = after.y - before.y;
       const d = Math.hypot(dx, dy) || 1;
       const normal = { x: -dy / d, y: dx / d };
-      const progress = clamp(sample.s / total, 0, 1);
-      const nose = .16 + .84 * smoothstep((total - sample.s) / 64);
-      const broad = 15 + 27 * (1 - .39 * progress);
+      // A sample's cut width stays fixed as the pointer moves or doubles back.
+      const broad = (31 + 10 * Math.exp(-sample.s / 170)) * tear.width;
       // Irregular, spatially coherent paper grain avoids repetitive sine waves.
       const rag = 2.7 * paperNoise(sample.s / 61, tear.seed) +
         1.15 * paperNoise(sample.s / 24, tear.seed + 4) +
         2.15 * paperNoise(sample.s / 8.4, tear.seed + 12);
-      const a = Math.max(1.4, (broad + rag) * nose);
+      const a = Math.max(1.4, broad + rag);
       const b = Math.max(1.4, (broad - rag * .58 + .7 * paperNoise(sample.s / 32, tear.seed + 8) +
-        1.55 * paperNoise(sample.s / 9.7, tear.seed + 21)) * nose);
+        1.55 * paperNoise(sample.s / 9.7, tear.seed + 21)));
       const leftPoint = { x: sample.x + normal.x * a, y: sample.y + normal.y * a };
       const rightPoint = { x: sample.x - normal.x * b, y: sample.y - normal.y * b };
       left.push(leftPoint);
       right.push(rightPoint);
-      points.push({ normal, s: sample.s });
+      points.push({ x: sample.x, y: sample.y, normal, s: sample.s });
     }
     return { left, right, points };
   }
@@ -435,15 +437,33 @@
       layer.beginPath();
       layer.rect(PAPER.left, PAPER.top, PAPER.right - PAPER.left, PAPER.bottom - PAPER.top);
       layer.clip();
-      pathBetween(layer, shape.left, shape.right);
-      layer.fill('evenodd');
+      // Each strip removes paper independently. A self-crossing path cannot
+      // reverse the cut through the even-odd fill rule.
+      for (let index = 1; index < shape.left.length; index += 1) {
+        layer.beginPath();
+        layer.moveTo(shape.left[index - 1].x, shape.left[index - 1].y);
+        layer.lineTo(shape.left[index].x, shape.left[index].y);
+        layer.lineTo(shape.right[index].x, shape.right[index].y);
+        layer.lineTo(shape.right[index - 1].x, shape.right[index - 1].y);
+        layer.closePath();
+        layer.fill();
+      }
+      // Round joins prevent pinholes where a hand makes a sharp turn.
+      layer.beginPath();
+      for (let index = 0; index < shape.points.length; index += 1) {
+        const point = shape.points[index];
+        const radius = Math.min(distance(point, shape.left[index]), distance(point, shape.right[index])) * .96;
+        layer.moveTo(point.x + radius, point.y);
+        layer.arc(point.x, point.y, radius, 0, Math.PI * 2);
+      }
+      layer.fill();
       layer.restore();
     }
     layer.restore();
     ctx.drawImage(cutPaper.element, 0, 0, W, H);
   }
 
-  function drawFlatEdge(shape, bank, side, seed) {
+  function drawFlatEdge(edgeContext, shape, bank, side, seed) {
     const cutSide = [];
     const paperSide = [];
     for (let index = 0; index < bank.length; index += 1) {
@@ -462,26 +482,26 @@
       });
     }
 
-    ctx.save();
+    edgeContext.save();
     // A thin cotton core lies flush with the photograph. It is never a lifted flap.
-    pathBetween(ctx, cutSide, paperSide);
-    ctx.fillStyle = 'rgba(233,225,212,.9)';
-    ctx.fill();
+    pathBetween(edgeContext, cutSide, paperSide);
+    edgeContext.fillStyle = 'rgba(233,225,212,.9)';
+    edgeContext.fill();
     if (images.texture) {
-      ctx.save();
-      pathBetween(ctx, cutSide, paperSide);
-      ctx.clip();
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.globalAlpha = .4;
-      ctx.drawImage(images.texture, PAPER.left, PAPER.top, PAPER.right - PAPER.left, PAPER.bottom - PAPER.top);
-      ctx.restore();
+      edgeContext.save();
+      pathBetween(edgeContext, cutSide, paperSide);
+      edgeContext.clip();
+      edgeContext.globalCompositeOperation = 'multiply';
+      edgeContext.globalAlpha = .4;
+      edgeContext.drawImage(images.texture, PAPER.left, PAPER.top, PAPER.right - PAPER.left, PAPER.bottom - PAPER.top);
+      edgeContext.restore();
     }
 
     // A nearly invisible compression line and scattered cut fibers break the edge.
-    pathAlong(ctx, paperSide);
-    ctx.lineWidth = .7;
-    ctx.strokeStyle = 'rgba(92,76,64,.13)';
-    ctx.stroke();
+    pathAlong(edgeContext, paperSide);
+    edgeContext.lineWidth = .7;
+    edgeContext.strokeStyle = 'rgba(92,76,64,.13)';
+    edgeContext.stroke();
     for (let index = 5; index < bank.length - 3; index += 2) {
       const info = shape.points[index];
       const chance = paperNoise(index * .72, seed + 19);
@@ -495,17 +515,17 @@
       const tangentLength = Math.hypot(dx, dy) || 1;
       const reach = 2.5 + 7.1 * Math.max(0, chance);
       const drift = paperNoise(index * 1.17, seed + 29) * 2.3;
-      ctx.beginPath();
-      ctx.moveTo(edge.x + n.x * side, edge.y + n.y * side);
-      ctx.lineTo(
+      edgeContext.beginPath();
+      edgeContext.moveTo(edge.x + n.x * side, edge.y + n.y * side);
+      edgeContext.lineTo(
         edge.x - n.x * side * reach + dx / tangentLength * drift,
         edge.y - n.y * side * reach + dy / tangentLength * drift
       );
-      ctx.lineWidth = .55 + .48 * Math.max(0, chance);
-      ctx.strokeStyle = `rgba(251,247,237,${.42 + .32 * Math.max(0, chance)})`;
-      ctx.stroke();
+      edgeContext.lineWidth = .55 + .48 * Math.max(0, chance);
+      edgeContext.strokeStyle = `rgba(251,247,237,${.42 + .32 * Math.max(0, chance)})`;
+      edgeContext.stroke();
     }
-    ctx.restore();
+    edgeContext.restore();
   }
 
   function render() {
@@ -514,10 +534,18 @@
     const shapes = tears.map((tear) => ({ tear, shape: geometry(tear) })).filter((item) => item.shape);
     for (const item of shapes) drawUnderShadow(item.shape);
     drawCutPaper(shapes.map((item) => item.shape));
+    const edgeContext = fiberEdges.context;
+    edgeContext.clearRect(0, 0, W, H);
     for (const item of shapes) {
-      drawFlatEdge(item.shape, item.shape.left, 1, item.tear.seed);
-      drawFlatEdge(item.shape, item.shape.right, -1, item.tear.seed + 7.1);
+      drawFlatEdge(edgeContext, item.shape, item.shape.left, 1, item.tear.seed);
+      drawFlatEdge(edgeContext, item.shape, item.shape.right, -1, item.tear.seed + 7.1);
     }
+    // Fibers only sit on paper that remains after every cut.
+    edgeContext.save();
+    edgeContext.globalCompositeOperation = 'destination-in';
+    edgeContext.drawImage(cutPaper.element, 0, 0, W, H);
+    edgeContext.restore();
+    ctx.drawImage(fiberEdges.element, 0, 0, W, H);
   }
 
   function scheduleRender() {
@@ -621,7 +649,7 @@
       return;
     }
     activeWasNew = !nearest;
-    activeTear = nearest || createTear(side, start);
+    activeTear = nearest || createTear(side, start, event.pointerType);
     samplesAtDown = activeTear.samples.length;
     activePointer = event.pointerId;
     assembly.classList.add('is-dragging');

@@ -157,3 +157,70 @@
 .save-preview-panel>a{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:11px 14px;background:#a7202b;color:#fff;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:.08em}
 .save-preview-panel>a:hover{background:#c12b38}
 .save-preview-panel>a span{font-size:19px}
+
+/* Motion follows the three acts: title, paper, then the printed invitation. */
+@keyframes film-fade-up{
+  from{opacity:0;transform:translateY(17px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes film-image-drift{
+  from{transform:scale(1.08) translate3d(-1.2%,0,0)}
+  to{transform:scale(1.02) translate3d(1%,0,0)}
+}
+@keyframes paper-settle{
+  from{opacity:0;transform:translateY(22px) rotate(-.45deg);filter:drop-shadow(0 38px 42px #0009)}
+  to{opacity:1;transform:translateY(0) rotate(0);filter:drop-shadow(0 29px 34px #0009) drop-shadow(0 5px 3px #0004)}
+}
+@keyframes paper-release{
+  to{opacity:0;transform:translateY(-9px) scale(.975);filter:blur(3px) drop-shadow(0 12px 25px #0008)}
+}
+@keyframes sun-reveal{
+  from{opacity:.15;transform:rotate(-18deg) scale(.78)}
+  to{opacity:1;transform:rotate(0) scale(1)}
+}
+@keyframes ink-rule{
+  from{transform:scaleX(0)}
+  to{transform:scaleX(1)}
+}
+.scene-entry:not([hidden]) .entry-image{animation:film-image-drift 24s ease-in-out both alternate infinite;will-change:transform}
+.scene-entry:not([hidden]) .scene-header{animation:film-fade-up .65s .08s both}
+.scene-entry:not([hidden]) .entry-content .eyebrow{animation:film-fade-up .55s .18s both}
+.scene-entry:not([hidden]) .entry-content h1{animation:film-fade-up .75s .27s cubic-bezier(.2,.8,.2,1) both}
+.scene-entry:not([hidden]) .entry-lead{animation:film-fade-up .65s .5s both}
+.scene-entry:not([hidden]) .entry-footer{animation:film-fade-up .65s .68s both}
+.name-row{transition:border-color .25s,box-shadow .25s,background .25s}
+.name-row:focus-within{background:#161518e0;box-shadow:0 0 0 1px #fff,0 0 30px #9a1f282b}
+.enter-button,.save-card-button{position:relative;overflow:hidden}
+.enter-button::after,.save-card-button::after{content:"";position:absolute;inset:0 auto 0 -40%;width:38%;transform:skewX(-26deg);background:linear-gradient(90deg,transparent,#fff2,transparent);transition:left .65s ease;pointer-events:none}
+.enter-button:hover::after,.save-card-button:hover::after{left:112%}
+.enter-button span,.save-card-button span{display:inline-block;transition:transform .25s ease}
+.enter-button:hover span{transform:translate(3px,-3px)}
+.save-card-button:hover span{transform:translateY(4px)}
+.scene-envelope:not([hidden]) .envelope-eyebrow{animation:film-fade-up .5s .08s both}
+.scene-envelope:not([hidden]) .envelope-stage h2{animation:film-fade-up .6s .16s both}
+.scene-envelope:not([hidden]) .envelope-instruction{animation:film-fade-up .6s .25s both}
+.scene-envelope:not([hidden]) .envelope-assembly{animation:paper-settle .75s .3s cubic-bezier(.2,.7,.2,1) both}
+.scene-envelope:not([hidden]) .envelope-assembly.is-opening{animation:paper-release .8s .1s ease-in both}
+.envelope-assembly.is-dragging{filter:drop-shadow(0 36px 43px #000b) drop-shadow(0 5px 3px #0004)}
+.scene-card:not([hidden]) .invite-head{animation:film-fade-up .45s .22s both}
+.scene-card:not([hidden]) .invite-sun{transform-origin:center;animation:sun-reveal .85s .16s cubic-bezier(.16,.9,.24,1) both}
+.scene-card:not([hidden]) .invite-main h2{animation:film-fade-up .65s .29s both}
+.scene-card:not([hidden]) .invite-recipient{animation:film-fade-up .55s .44s both}
+.scene-card:not([hidden]) .invite-message{animation:film-fade-up .55s .56s both}
+.scene-card:not([hidden]) .invite-cut{transform-origin:left center;animation:ink-rule .52s .66s both}
+.scene-card:not([hidden]) .invite-details>div:nth-child(1){animation:film-fade-up .48s .69s both}
+.scene-card:not([hidden]) .invite-details>div:nth-child(2){animation:film-fade-up .48s .78s both}
+.scene-card:not([hidden]) .invite-details>div:nth-child(3){animation:film-fade-up .48s .87s both}
+.scene-card:not([hidden]) .invite-foot{animation:film-fade-up .5s .95s both}
+.scene-card:not([hidden]) .invite-digital{animation:film-fade-up .55s 1.03s both}
+.scene-card:not([hidden]) .card-actions{animation:film-fade-up .5s 1.12s both}
+.invite-qr-slot{transition:transform .25s ease,box-shadow .25s ease}
+.invite-qr-slot:hover{transform:translateY(-3px);box-shadow:0 8px 22px #0006}
+@media(prefers-reduced-motion:reduce){
+  .scene-entry .entry-image,.scene-entry .scene-header,.scene-entry .entry-content .eyebrow,.scene-entry .entry-content h1,.scene-entry .entry-lead,.scene-entry .entry-footer,
+  .scene-envelope .envelope-eyebrow,.scene-envelope .envelope-stage h2,.scene-envelope .envelope-instruction,.scene-envelope .envelope-assembly,
+  .scene-card .invite-head,.scene-card .invite-sun,.scene-card .invite-main h2,.scene-card .invite-recipient,.scene-card .invite-message,
+  .scene-card .invite-cut,.scene-card .invite-details>div,.scene-card .invite-foot,.scene-card .invite-digital,.scene-card .card-actions{animation:none!important;opacity:1;transform:none}
+  .entry-image{will-change:auto!important}
+  .enter-button,.save-card-button,.name-row,.invite-qr-slot{transition:none!important}
+}
